@@ -1,0 +1,23 @@
+type Prescription {
+    id: ID!
+    doctorName: String!
+    patientName: String!
+    date: String
+    medicine: [Medicine]
+}
+
+extend type Query {
+prescriptions: [Prescription]
+}
+
+extend type Mutation {
+    newPrescription(prescriptionInput: PrescriptionInput!): Prescription
+}
+
+input PrescriptionInput {
+    doctorName: String!
+    patientName: String!
+    medicineIDs: [ID!]
+    date: String!
+}
+
