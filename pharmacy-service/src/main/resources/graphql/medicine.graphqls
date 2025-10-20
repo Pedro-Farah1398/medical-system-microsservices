@@ -1,0 +1,59 @@
+type Medicine {
+    id: ID!
+    name: String!
+    manufacturer: String
+    dosage: String
+    type: Type
+    administration: Administration
+    activeIngredient: String
+    amount: Int
+    priority: String
+}
+
+type Query {
+    medicines(filter: MedicineFilter): [Medicine]
+}
+
+type Mutation {
+    newMedicine(medicine: MedicineInput!): Medicine
+}
+
+input MedicineInput {
+    name: String!
+    dosage: String!
+    manufacturer: String
+    type: Type
+    administration: Administration
+    activeIngredient: String
+    amount: Int
+    priority: String
+}
+
+input MedicineFilter {
+    id: FilterField
+    name: FilterField
+    type: FilterField
+    administration: FilterField
+    amount: FilterField
+}
+
+input FilterField {
+    operator: String
+    value: String
+}
+
+enum Administration {
+    ORAL,
+    INJECTION,
+    SUBLINGUAL,
+    RECTAL,
+    OCULAR,
+    NASAL,
+    OTIC
+}
+
+enum Type {
+    GENERIC
+    HERBAL
+    BRAND_NAME
+}
