@@ -1,0 +1,136 @@
+services:
+  postgres-lab:
+    image: postgres:16
+    container_name: postgres-lab
+    environment:
+      POSTGRES_DB: laboratorydb
+      POSTGRES_USER: lab_user
+      POSTGRES_PASSWORD: lab_pass
+    ports:
+      - "5433:5432"
+    networks:
+      - hospital-net
+
+  postgres-pharmacy:
+    image: postgres:16
+    container_name: postgres-pharmacy
+    environment:
+      POSTGRES_DB: pharmacydb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    networks:
+      - hospital-net
+
+  mongo-lab:
+    image: mongo:7
+    container_name: mongo-lab
+    ports:
+      - "27018:27017"
+    networks:
+      - hospital-net
+
+  mongo-ordering:
+    image: mongo:7
+    container_name: mongo-ordering
+    ports:
+      - "27019:27017"
+    networks:
+      - hospital-net
+
+  laboratory-service:
+    build: ./laboratory-service
+    container_name: laboratory-service
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-lab:5432/laboratorydb
+      SPRING_DATASOURCE_USERNAME: lab_user
+      SPRING_DATASOURCE_PASSWORD: lab_pass
+      SPRING_DATA_MONGODB_URI: mongodb://mongo-lab:27017/laboratory_results
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres-lab
+      - mongo-lab
+      - kafka
+    networks:
+      - hospital-net
+
+  pharmacy-service:
+    build: ./pharmacy-service
+    container_name: pharmacy-service
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-pharmacy:5432/pharmacydb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - kafka
+      - postgres-pharmacy
+    networks:
+      - hospital-net
+
+  ordering-service:
+    build: ./ordering-service
+    container_name: ordering-service
+    ports:
+      - "8084:8080"
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_DATA_MONGODB_URI: mongodb://mongo-ordering:27017/ordering
+    depends_on:
+      - kafka
+    networks:
+      - hospital-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - hospital-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092" 
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_DOCKER://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_DOCKER://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_DOCKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    networks:
+      - hospital-net
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:29092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      - kafka
+    networks:
+      - hospital-net
+
+networks:
+  hospital-net:
+    driver: bridge
